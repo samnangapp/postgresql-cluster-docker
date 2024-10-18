@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  postgres-primary:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - primary-data:/var/lib/postgresql/data
+      - ./primary/postgres.conf:/etc/postgresql/postgresql.conf
+      - ./primary/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - sabay-docker
+    deploy:
+      placement:
+        constraints:
+          - node.labels.postgres.role == primary
+
+  postgres-replica:
+    image: postgres:13
+    depends_on:
+      - postgres-primary
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - replica-data:/var/lib/postgresql/data
+      - ./replica/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh
+    networks:
+      - sabay-docker
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.labels.postgres.role == replica
+
+volumes:
+  primary-data:
+  replica-data:
+
+networks:
+  sabay-docker:
+    driver: overlay
