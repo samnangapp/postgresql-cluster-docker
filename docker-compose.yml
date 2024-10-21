@@ -2,7 +2,8 @@ version: "3.8"
 
 services:
   postgres-primary:
-    image: postgres:13
+    build: ./primary
+    container_name: postgres-primary
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -10,36 +11,57 @@ services:
       - primary-data:/var/lib/postgresql/data
       - ./primary/postgres.conf:/etc/postgresql/postgresql.conf
       - ./primary/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    ports:
+      - "5432:5432"
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
-    networks:
-      - sabay-docker
-    deploy:
-      placement:
-        constraints:
-          - node.labels.postgres.role == primary
 
-  postgres-replica:
-    image: postgres:13
+  postgres-replica1:
+    build: ./replica
     depends_on:
       - postgres-primary
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - replica-data:/var/lib/postgresql/data
+      - replica-data-01:/var/lib/postgresql/data
       - ./replica/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh
-    networks:
-      - sabay-docker
-    deploy:
-      replicas: 3
-      placement:
-        constraints:
-          - node.labels.postgres.role == replica
+      - ./replica/postgres.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - "5433:5432"
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  postgres-replica2:
+    build: ./replica
+    depends_on:
+      - postgres-primary
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - replica-data-02:/var/lib/postgresql/data
+      - ./replica/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh
+      - ./replica/postgres.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - "5434:5432"
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  postgres-replica3:
+    build: ./replica
+    depends_on:
+      - postgres-primary
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - replica-data-03:/var/lib/postgresql/data
+      - ./replica/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh
+      - ./replica/postgres.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - "5435:5432"
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
 
 volumes:
   primary-data:
-  replica-data:
-
-networks:
-  sabay-docker:
-    driver: overlay
+  replica-data-01:
+  replica-data-02:
+  replica-data-03:
